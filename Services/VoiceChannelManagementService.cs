@@ -47,13 +47,17 @@ namespace DiscordChannelsBot.Services
         }
         protected async Task AllowOnlyRoles(IGuild guild, IVoiceChannel voiceChannel, IEnumerable<IRole> roles)
         {
-            OverwritePermissions denyPermissions = OverwritePermissions.DenyAll(voiceChannel);
-            await voiceChannel.AddPermissionOverwriteAsync(guild.EveryoneRole, denyPermissions);
-            OverwritePermissions rolePermissions = new OverwritePermissions();
-            rolePermissions = rolePermissions.Modify(viewChannel: PermValue.Allow,
+            OverwritePermissions rolePermissions = new OverwritePermissions().Modify(viewChannel: PermValue.Allow,
                 connect: PermValue.Allow,
                 speak: PermValue.Allow,
                 useVoiceActivation: PermValue.Allow);
+
+            OverwritePermissions denyPermissions = new OverwritePermissions().Modify(viewChannel: PermValue.Deny,
+                connect: PermValue.Deny,
+                speak: PermValue.Deny,
+                useVoiceActivation: PermValue.Deny);
+
+            await voiceChannel.AddPermissionOverwriteAsync(guild.EveryoneRole, denyPermissions);
 
             foreach (var role in roles)
             {
