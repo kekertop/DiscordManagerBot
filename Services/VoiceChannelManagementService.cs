@@ -41,7 +41,10 @@ namespace DiscordChannelsBot.Services
             voiceChannel = await guild.CreateVoiceChannelAsync(name, voiceChannelProperties);
             if (guildGroupsContext != null)
             {
-                await AllowOnlyRoles(guild, voiceChannel, guildGroupsContext);
+                if ((guildGroupsContext.Roles != null && guildGroupsContext.Roles.Count() != 0) || (guildGroupsContext.Users != null && guildGroupsContext.Users.Count() != 0))
+                {
+                    await AllowOnlyRoles(guild, voiceChannel, guildGroupsContext);
+                }
             }
             RunDeletionCheck(voiceChannel.Id);
 
