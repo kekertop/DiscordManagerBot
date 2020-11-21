@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System;
 using System.Threading;
+using DiscordChannelsBot.Core;
 
 namespace DiscordChannelsBot.Services
 {
@@ -28,7 +29,7 @@ namespace DiscordChannelsBot.Services
         {
             await CreateVoiceChannelAsync(guild, name, null);
         }
-        public async Task CreateVoiceChannelAsync(IGuild guild, string name, IEnumerable<IRole> roles)
+        public async Task CreateVoiceChannelAsync(IGuild guild, string name, GuildGroupsContext guildGroupsContext)
         {
             ICategoryChannel categoryChannel = await discordBotConfigurationService.DiscordBotConfiguration.GetCategory(guild);
             IVoiceChannel voiceChannel;
@@ -38,30 +39,37 @@ namespace DiscordChannelsBot.Services
                 voiceChannelProperties += (channel) => channel.CategoryId = categoryChannel.Id;
             }
             voiceChannel = await guild.CreateVoiceChannelAsync(name, voiceChannelProperties);
-            if (roles != null && roles.Count() > 0)
+            if (guildGroupsContext != null)
             {
-                await AllowOnlyRoles(guild, voiceChannel, roles);
+                await AllowOnlyRoles(guild, voiceChannel, guildGroupsContext);
             }
             RunDeletionCheck(voiceChannel.Id);
 
         }
-        protected async Task AllowOnlyRoles(IGuild guild, IVoiceChannel voiceChannel, IEnumerable<IRole> roles)
+        protected async Task AllowOnlyRoles(IGuild guild, IVoiceChannel voiceChannel, GuildGroupsContext guildGroupsContext)
         {
             OverwritePermissions rolePermissions = new OverwritePermissions().Modify(viewChannel: PermValue.Allow,
                 connect: PermValue.Allow,
-                speak: PermValue.Allow,
-                useVoiceActivation: PermValue.Allow);
+                speak: PermValue.Allow);
 
             OverwritePermissions denyPermissions = new OverwritePermissions().Modify(viewChannel: PermValue.Deny,
                 connect: PermValue.Deny,
-                speak: PermValue.Deny,
-                useVoiceActivation: PermValue.Deny);
+                speak: PermValue.Deny);
 
             await voiceChannel.AddPermissionOverwriteAsync(guild.EveryoneRole, denyPermissions);
-
-            foreach (var role in roles)
+            if (guildGroupsContext.Roles != null)
             {
-                await voiceChannel.AddPermissionOverwriteAsync(role, rolePermissions);
+                foreach (var role in guildGroupsContext.Roles)
+                {
+                    await voiceChannel.AddPermissionOverwriteAsync(role, rolePermissions);
+                }
+            }
+            if (guildGroupsContext.Users != null)
+            {
+                foreach (var user in guildGroupsContext.Users)
+                {
+                    await voiceChannel.AddPermissionOverwriteAsync(user, rolePermissions);
+                }
             }
         }
         protected async Task UserVoiceStateUpdatedHandleAsync(SocketUser user, SocketVoiceState originalState, SocketVoiceState updatedState)
@@ -92,7 +100,7 @@ namespace DiscordChannelsBot.Services
                     return;
                 }
                 SocketVoiceChannel voiceChannel = (SocketVoiceChannel)discordClient.GetChannel(voiceChannelId);
-                if (voiceChannel.Users.Count == 0)
+                if (voiceChannel != null && voiceChannel.Users.Count == 0)
                 {
                     await voiceChannel.DeleteAsync();
                 }

@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Commands;
+using DiscordChannelsBot.Core;
 using DiscordChannelsBot.Services;
 using System;
 using System.Collections.Generic;
@@ -20,8 +21,8 @@ namespace DiscordChannelsBot.Commands
         {
             if (paramsMessage != null && paramsMessage.Length > 0)
             {
-                IEnumerable<IRole> roles = MessageFormattingService.GetRolesFromMessage(Context.Guild, ref paramsMessage);
-                await VoiceChannelManagementService.CreateVoiceChannelAsync(Context.Guild, paramsMessage, roles);
+                GuildGroupsContext guildRolesAndUsers = MessageFormattingService.GetGuildGroupsContextFromMessage(Context.Guild, ref paramsMessage);
+                await VoiceChannelManagementService.CreateVoiceChannelAsync(Context.Guild, paramsMessage, guildRolesAndUsers);
                 await Context.Channel.SendMessageAsync($"Добавил канал под названием **{paramsMessage}**.");
             }
             else
