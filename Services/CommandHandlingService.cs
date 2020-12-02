@@ -54,7 +54,24 @@ namespace DiscordChannelsBot.Services
                 return;
             if (result.IsSuccess)
                 return;
-            await context.Channel.SendMessageAsync($"Произошла ошибка: {result}");
+            switch (result.Error)
+            {
+                case CommandError.BadArgCount:
+                    await context.Channel.SendMessageAsync($"Произошла ошибка: вы написали слишком мало аргументов в команде.");
+                    return;
+                case CommandError.UnknownCommand:
+                    await context.Channel.SendMessageAsync($"Произошла ошибка: команда не распознана.");
+                    return;
+                case CommandError.ParseFailed:
+                    await context.Channel.SendMessageAsync($"Произошла ошибка: команда не распознана.");
+                    return;
+                case CommandError.Exception:
+                    await context.Channel.SendMessageAsync($"Произошла ошибка: {result}");
+                    return;
+                case CommandError.Unsuccessful:
+                    await context.Channel.SendMessageAsync($"Произошла ошибка: команда не выполнена.");
+                    return;
+            }
         }
     }
 }
