@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DiscordChannelsBot.CommandManagement.CommandHandling
 {
-    internal class CommandHandlingService
+    internal class CommandHandlingService : ICommandHandlingService
     {
         private readonly CommandService _commandService;
         private readonly IDiscordBotConfigurationService _discordBotConfigurationService;
@@ -20,10 +20,14 @@ namespace DiscordChannelsBot.CommandManagement.CommandHandling
             _commandService = serviceProvider.GetRequiredService<CommandService>();
             _discordClient = serviceProvider.GetRequiredService<DiscordSocketClient>();
             _discordBotConfigurationService = serviceProvider.GetRequiredService<IDiscordBotConfigurationService>();
+            _serviceProvider = serviceProvider;
+        }
+
+        public async Task InitializeAsync()
+        {
             _discordClient.MessageReceived += MessageReceivedAsync;
             _commandService.CommandExecuted += CommandExecutedAsync;
-            _serviceProvider = serviceProvider;
-            _commandService.AddModuleAsync<ChannelsManagementModule>(_serviceProvider).Wait();
+            await _commandService.AddModuleAsync<ChannelsManagementModule>(_serviceProvider);
         }
 
         private async Task MessageReceivedAsync(SocketMessage socketMessage)

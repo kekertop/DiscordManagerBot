@@ -23,11 +23,15 @@ namespace DiscordChannelsBot
 
         private static async Task MainAsync()
         {
-            await using var services = ConfigureServices();
+            await using var serviceProvider = ConfigureServices();
+            await InitializeServices(serviceProvider);
+
             var discordConfigurationService =
-                services.GetRequiredService<IDiscordBotConfigurationService>();
+                serviceProvider.GetRequiredService<IDiscordBotConfigurationService>();
+            var client = serviceProvider.GetRequiredService<DiscordSocketClient>();
+
             var discordBotConfiguration = discordConfigurationService.GetBotConfiguration();
-            var client = services.GetRequiredService<DiscordSocketClient>();
+
             client.Log += LogAsync;
 
             await client.LoginAsync(TokenType.Bot, discordBotConfiguration.Token);
@@ -35,14 +39,19 @@ namespace DiscordChannelsBot
             await Task.Delay(Timeout.Infinite);
         }
 
+        private static async Task InitializeServices(IServiceProvider serviceProvider)
+        {
+            await serviceProvider.GetRequiredService<ICommandHandlingService>().InitializeAsync();
+        }
+
         private static ServiceProvider ConfigureServices()
         {
             return new ServiceCollection()
                 .AddSingleton<DiscordSocketClient>()
                 .AddSingleton<CommandService>()
-                .AddSingleton<CommandHandlingService>()
                 .AddSingleton<IDiscordCommonService, DiscordCommonService>()
                 .AddSingleton<IDiscordBotConfigurationService, DiscordBotFileBasedConfigurationService>()
+                .AddSingleton<ICommandHandlingService, CommandHandlingService>()
                 .AddSingleton<IVoiceChannelManagementService, VoiceChannelManagementService>()
                 .AddSingleton<IMessageFormattingService, MessageFormattingService>()
                 .BuildServiceProvider();

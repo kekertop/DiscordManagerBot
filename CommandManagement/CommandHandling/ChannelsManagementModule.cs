@@ -10,8 +10,8 @@ namespace DiscordChannelsBot.CommandManagement.CommandHandling
     public class ChannelsManagementModule : ModuleBase<SocketCommandContext>
     {
         public IDiscordBotConfigurationService DiscordBotConfigurationService { get; init; }
-        public VoiceChannelManagementService VoiceChannelManagementService { get; init; }
-        public MessageFormattingService MessageFormattingService { get; init; }
+        public IVoiceChannelManagementService VoiceChannelManagementService { get; init; }
+        public IMessageFormattingService MessageFormattingService { get; init; }
 
         [Command("voice")]
         [RequireContext(ContextType.Guild)]
