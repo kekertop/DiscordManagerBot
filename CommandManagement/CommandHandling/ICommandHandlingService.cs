@@ -1,9 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿namespace DiscordChannelsBot.CommandManagement.CommandHandling;
 
-namespace DiscordChannelsBot.CommandManagement.CommandHandling
+public interface ICommandHandlingService
 {
-    public interface ICommandHandlingService
-    {
-        Task InitializeAsync();
-    }
 }
