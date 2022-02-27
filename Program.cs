@@ -1,4 +1,5 @@
-﻿using Discord.Commands;
+﻿using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using DiscordChannelsBot.CommandManagement.ChannelManagement;
 using DiscordChannelsBot.CommandManagement.CommandHandling;
@@ -8,6 +9,7 @@ using DiscordChannelsBot.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordChannelsBot;
 
@@ -38,7 +40,14 @@ internal class Program
     private static IHostBuilder CreateHostBuilder(string[] args)
     {
         return Host.CreateDefaultBuilder(args)
+            .ConfigureLogging(ConfigureLogging)
             .ConfigureServices(ConfigureServices);
+    }
+
+    private static void ConfigureLogging(HostBuilderContext context, ILoggingBuilder loggingBuilder)
+    {
+        loggingBuilder.ClearProviders();
+        loggingBuilder.AddConsole();
     }
 
     private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
@@ -46,12 +55,16 @@ internal class Program
         AddDbContext(services);
 
         services.Configure<DiscordBotConfiguration>(context.Configuration.GetSection("DiscordBot"))
-            .AddSingleton<DiscordSocketClient>()
+            .AddSingleton(_ => new DiscordSocketClient(new DiscordSocketConfig
+            {
+                GatewayIntents = GatewayIntents.All
+            }))
             .AddSingleton<CommandService>()
             .AddSingleton<IDiscordBotConfigurationService, DiscordBotFileBasedConfigurationService>()
             .AddSingleton<ICommandHandlingService, CommandHandlingService>()
             .AddSingleton<IVoiceChannelManagementService, VoiceChannelManagementService>()
-            .AddSingleton<IMessageFormattingService, MessageFormattingService>();
+            .AddSingleton<IMessageFormattingService, MessageFormattingService>()
+            .AddSingleton<DiscordBot>();
     }
 
     private static void AddDbContext(IServiceCollection services)

@@ -1,4 +1,5 @@
 ﻿using Discord;
+using DiscordChannelsBot.Models;
 
 namespace DiscordChannelsBot.CommandManagement.MessageFormatting;
 

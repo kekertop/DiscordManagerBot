@@ -3,6 +3,7 @@ using Discord.Commands;
 using DiscordChannelsBot.CommandManagement.ChannelManagement;
 using DiscordChannelsBot.CommandManagement.MessageFormatting;
 using DiscordChannelsBot.Configuration;
+using DiscordChannelsBot.Models;
 
 namespace DiscordChannelsBot.CommandManagement.CommandHandling;
 
@@ -42,8 +43,23 @@ public class ChannelsManagementModule : ModuleBase<SocketCommandContext>
         if (name != null && name.Length > 0)
         {
             var guildConfiguration = await DiscordBotConfigurationService.GetGuildConfigurationAsync(Context.Guild.Id);
-            guildConfiguration.VoiceChannelCreationCategory = name;
-            await DiscordBotConfigurationService.UpdateAsync(guildConfiguration);
+
+            if (guildConfiguration == null)
+            {
+                guildConfiguration = new DiscordGuildConfiguration
+                {
+                    Id = Context.Guild.Id,
+                    VoiceChannelCreationCategory = name
+                };
+
+                await DiscordBotConfigurationService.SaveAsync(guildConfiguration);
+            }
+            else
+            {
+                guildConfiguration.VoiceChannelCreationCategory = name;
+
+                await DiscordBotConfigurationService.UpdateAsync(guildConfiguration);
+            }
 
             await Context.Channel.SendMessageAsync(
                 $"Теперь голосовые каналы будут создаваться в категории **{name}**.");

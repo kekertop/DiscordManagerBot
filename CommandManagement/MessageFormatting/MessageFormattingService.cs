@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
+using DiscordChannelsBot.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DiscordChannelsBot.CommandManagement.MessageFormatting;
@@ -34,7 +35,11 @@ public class MessageFormattingService : IMessageFormattingService
     private ulong getIdFromString(string idString, IEnumerable<string> garbageStrings)
     {
         var finalString = idString;
-        foreach (var garbageString in garbageStrings) finalString = finalString.Replace(garbageString, "");
+        foreach (var garbageString in garbageStrings)
+        {
+            finalString = finalString.Replace(garbageString, "");
+        }
+
         return ulong.Parse(finalString);
     }
 
@@ -47,9 +52,12 @@ public class MessageFormattingService : IMessageFormattingService
         {
             var stringResult = match.Value;
             message = message.Replace(stringResult, "");
-            var roleId = getIdFromString(stringResult, new[] { ROLES_BEGIN_CONTENT, END_CONTENT });
+            var roleId = getIdFromString(stringResult, new[] {ROLES_BEGIN_CONTENT, END_CONTENT});
             var role = guild.GetRole(roleId);
-            if (role != null) rolesList.Add(role);
+            if (role != null)
+            {
+                rolesList.Add(role);
+            }
         }
 
         return rolesList;
@@ -64,9 +72,12 @@ public class MessageFormattingService : IMessageFormattingService
         {
             var stringResult = match.Value;
             message = message.Replace(stringResult, "");
-            var userId = getIdFromString(stringResult, new[] { USERS_BEGIN_CONTENT, END_CONTENT });
+            var userId = getIdFromString(stringResult, new[] {USERS_BEGIN_CONTENT, END_CONTENT});
             IUser user = guild.GetUserAsync(userId).GetAwaiter().GetResult();
-            if (user != null) usersList.Add(user);
+            if (user != null)
+            {
+                usersList.Add(user);
+            }
         }
 
         return usersList;

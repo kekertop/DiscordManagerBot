@@ -1,8 +1,8 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using DiscordChannelsBot.CommandManagement.MessageFormatting;
 using DiscordChannelsBot.Common;
 using DiscordChannelsBot.Configuration;
+using DiscordChannelsBot.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DiscordChannelsBot.CommandManagement.ChannelManagement;
@@ -28,19 +28,30 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
     public async Task CreateVoiceChannelAsync(IGuild guild, string name, GuildGroupsContext guildGroupsContext)
     {
         var guildConfiguration = await _discordBotConfigurationService.GetGuildConfigurationAsync(guild.Id);
+        if (guildConfiguration == null)
+        {
+            throw new ArgumentException("Не указана категория для создания голосовых каналов!");
+        }
 
         var categoryChannel =
             await DiscordBotUtils.GetCategoryAsync(guild, guildConfiguration.VoiceChannelCreationCategory);
 
         Action<VoiceChannelProperties> voiceChannelProperties = channel => { };
-        if (categoryChannel != null) voiceChannelProperties += channel => channel.CategoryId = categoryChannel.Id;
+        if (categoryChannel != null)
+        {
+            voiceChannelProperties += channel => channel.CategoryId = categoryChannel.Id;
+        }
 
         var voiceChannel = await guild.CreateVoiceChannelAsync(name, voiceChannelProperties);
 
         if (guildGroupsContext != null)
+        {
             if (guildGroupsContext.Roles != null && guildGroupsContext.Roles.Any() ||
                 guildGroupsContext.Users != null && guildGroupsContext.Users.Any())
+            {
                 await AllowOnlyRoles(guild, voiceChannel, guildGroupsContext);
+            }
+        }
 
         RunDeletionCheck(voiceChannel.Id);
     }
@@ -61,12 +72,20 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
         await voiceChannel.AddPermissionOverwriteAsync(guildGroupsContext.CurrentUser, rolePermissions);
 
         if (guildGroupsContext.Roles != null)
+        {
             foreach (var role in guildGroupsContext.Roles)
+            {
                 await voiceChannel.AddPermissionOverwriteAsync(role, rolePermissions);
+            }
+        }
 
         if (guildGroupsContext.Users != null)
+        {
             foreach (var user in guildGroupsContext.Users)
+            {
                 await voiceChannel.AddPermissionOverwriteAsync(user, rolePermissions);
+            }
+        }
     }
 
     private Task UserVoiceStateUpdatedHandleAsync(SocketUser user, SocketVoiceState originalState,
@@ -76,7 +95,9 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
         {
             var voiceChannel = originalState.VoiceChannel;
             if (voiceChannel.Users.Count == 0)
+            {
                 RunDeletionCheck(voiceChannel.Id);
+            }
         }
 
         if (updatedState.VoiceChannel != null)
@@ -99,8 +120,11 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
             {
                 await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
 
-                var voiceChannel = (SocketVoiceChannel)_discordClient.GetChannel(voiceChannelId);
-                if (voiceChannel != null && voiceChannel.Users.Count == 0) await voiceChannel.DeleteAsync();
+                var voiceChannel = (SocketVoiceChannel) _discordClient.GetChannel(voiceChannelId);
+                if (voiceChannel != null && voiceChannel.Users.Count == 0)
+                {
+                    await voiceChannel.DeleteAsync();
+                }
             }
             catch (TaskCanceledException)
             {

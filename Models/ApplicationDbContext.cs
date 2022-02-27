@@ -4,8 +4,9 @@ namespace DiscordChannelsBot.Models;
 
 public sealed class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext()
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {
+        Database.EnsureCreated();
         Database.Migrate();
     }
 

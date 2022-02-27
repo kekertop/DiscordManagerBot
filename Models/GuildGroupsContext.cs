@@ -1,6 +1,6 @@
 ﻿using Discord;
 
-namespace DiscordChannelsBot.CommandManagement.MessageFormatting;
+namespace DiscordChannelsBot.Models;
 
 public class GuildGroupsContext
 {

@@ -1,7 +1,10 @@
 ﻿using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
-using DiscordChannelsBot.Configuration;
+using DiscordChannelsBot.CommandManagement.CommandHandling;
+using DiscordChannelsBot.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace DiscordChannelsBot;
 
@@ -9,19 +12,27 @@ public class DiscordBot
 {
     private readonly DiscordSocketClient _bot;
     private readonly DiscordBotConfiguration _configuration;
-    private readonly ILogger _logger;
+    private readonly ILogger<DiscordBot> _logger;
 
-    public DiscordBot(DiscordBotConfiguration configuration, DiscordSocketClient bot, ILogger logger)
+    public DiscordBot(IServiceProvider serviceProvider, IOptions<DiscordBotConfiguration> configuration,
+        CommandService commandService, DiscordSocketClient bot, ILogger<DiscordBot> logger,
+        ICommandHandlingService commandHandlingService)
     {
-        _configuration = configuration;
+        _configuration = configuration.Value;
         _bot = bot;
         _logger = logger;
+
+        _bot.Log += Log;
+        _bot.MessageReceived += message =>
+            commandHandlingService.HandleMessageReceivedAsync(message, _bot, commandService);
+
+        commandService.CommandExecuted += commandHandlingService.HandleCommandExecutedAsync;
+        commandService.AddModuleAsync<ChannelsManagementModule>(serviceProvider).ConfigureAwait(false).GetAwaiter()
+            .GetResult();
     }
 
     public async Task StartAsync()
     {
-        _bot.Log += Log;
-
         await _bot.LoginAsync(TokenType.Bot, _configuration.Token);
         await _bot.StartAsync();
     }

@@ -1,4 +1,4 @@
-﻿namespace DiscordChannelsBot.Configuration;
+﻿namespace DiscordChannelsBot.Models;
 
 public class DiscordBotConfiguration
 {

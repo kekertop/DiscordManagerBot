@@ -19,7 +19,13 @@ public class DiscordBotFileBasedConfigurationService : IDiscordBotConfigurationS
 
     public async Task UpdateAsync(DiscordGuildConfiguration discordGuildConfiguration)
     {
-        _applicationDbContext.Update(discordGuildConfiguration);
+        _applicationDbContext.GuildConfigurations.Update(discordGuildConfiguration);
+        await _applicationDbContext.SaveChangesAsync();
+    }
+
+    public async Task SaveAsync(DiscordGuildConfiguration discordGuildConfiguration)
+    {
+        await _applicationDbContext.GuildConfigurations.AddAsync(discordGuildConfiguration);
         await _applicationDbContext.SaveChangesAsync();
     }
 }

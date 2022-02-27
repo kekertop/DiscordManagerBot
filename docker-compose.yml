@@ -14,7 +14,7 @@ services:
     ports:
       - "8080:80"
     environment:
-      DB_CONNECTION_STRING: host=postgres_image;port=5432;database=disdb;username=discord;password=discord
+      DB_CONNECTION_STRING: host=discord-bot-postgres;port=5432;database=disdb;username=discord;password=discord
     #      REDIS_CONNECTION_STRING: redis_image 
     networks:
       - default-network
@@ -24,9 +24,10 @@ services:
   #    container_name: redis.cache
 
   postgres_image:
+    container_name: discord-bot-postgres
     image: postgres:latest
     ports:
-      - "5432"
+      - "5432:5432"
     restart: always
     volumes:
       - db_volume:/var/lib/postgresql/data
