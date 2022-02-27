@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace DiscordChannelsBot;
 
-public class DiscordBot
+public class DiscordBot : IAsyncExecutor
 {
     private readonly DiscordSocketClient _bot;
     private readonly DiscordBotConfiguration _configuration;
