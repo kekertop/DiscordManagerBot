@@ -1,66 +1,77 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Discord;
+﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using DiscordChannelsBot.CommandManagement.ChannelManagement;
 using DiscordChannelsBot.CommandManagement.CommandHandling;
 using DiscordChannelsBot.CommandManagement.MessageFormatting;
-using DiscordChannelsBot.Common;
 using DiscordChannelsBot.Configuration;
+using DiscordChannelsBot.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-namespace DiscordChannelsBot
+namespace DiscordChannelsBot;
+
+internal class Program
 {
-    internal class Program
+    public static void Main(string[] args)
     {
-        public static void Main()
-        {
-            MainAsync().GetAwaiter().GetResult();
-        }
+        MainAsync(args).GetAwaiter().GetResult();
+    }
 
+    private static async Task MainAsync(string[] args)
+    {
+        using var host = CreateHostBuilder(args).Build();
+        await using var serviceScope = host.Services.CreateAsyncScope();
 
-        private static async Task MainAsync()
-        {
-            await using var serviceProvider = ConfigureServices();
-            await InitializeServices(serviceProvider);
+        var serviceProvider = serviceScope.ServiceProvider;
+        var bot = serviceProvider.GetRequiredService<DiscordBot>();
 
-            var discordConfigurationService =
-                serviceProvider.GetRequiredService<IDiscordBotConfigurationService>();
-            var client = serviceProvider.GetRequiredService<DiscordSocketClient>();
+        await StartBot(bot);
+    }
 
-            var discordBotConfiguration = discordConfigurationService.GetBotConfiguration();
+    private static async Task StartBot(DiscordBot bot)
+    {
+        await bot.StartAsync();
+        await Task.Delay(Timeout.Infinite);
+    }
 
-            client.Log += LogAsync;
+    private static IHostBuilder CreateHostBuilder(string[] args)
+    {
+        return Host.CreateDefaultBuilder(args)
+            .ConfigureLogging(ConfigureLogging)
+            .ConfigureServices(ConfigureServices);
+    }
 
-            await client.LoginAsync(TokenType.Bot, discordBotConfiguration.Token);
-            await client.StartAsync();
-            await Task.Delay(Timeout.Infinite);
-        }
+    private static void ConfigureLogging(HostBuilderContext context, ILoggingBuilder loggingBuilder)
+    {
+        loggingBuilder.ClearProviders();
+        loggingBuilder.AddConsole();
+    }
 
-        private static async Task InitializeServices(IServiceProvider serviceProvider)
-        {
-            await serviceProvider.GetRequiredService<ICommandHandlingService>().InitializeAsync();
-        }
+    private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
+    {
+        AddDbContext(services);
 
-        private static ServiceProvider ConfigureServices()
-        {
-            return new ServiceCollection()
-                .AddSingleton<DiscordSocketClient>()
-                .AddSingleton<CommandService>()
-                .AddSingleton<IDiscordCommonService, DiscordCommonService>()
-                .AddSingleton<IDiscordBotConfigurationService, DiscordBotFileBasedConfigurationService>()
-                .AddSingleton<ICommandHandlingService, CommandHandlingService>()
-                .AddSingleton<IVoiceChannelManagementService, VoiceChannelManagementService>()
-                .AddSingleton<IMessageFormattingService, MessageFormattingService>()
-                .BuildServiceProvider();
-        }
+        services.Configure<DiscordBotConfiguration>(context.Configuration.GetSection("DiscordBot"))
+            .AddSingleton(_ => new DiscordSocketClient(new DiscordSocketConfig
+            {
+                GatewayIntents = GatewayIntents.All
+            }))
+            .AddSingleton<CommandService>()
+            .AddSingleton<IDiscordBotConfigurationService, DiscordBotFileBasedConfigurationService>()
+            .AddSingleton<ICommandHandlingService, CommandHandlingService>()
+            .AddSingleton<IVoiceChannelManagementService, VoiceChannelManagementService>()
+            .AddSingleton<IMessageFormattingService, MessageFormattingService>()
+            .AddSingleton<DiscordBot>();
+    }
 
-        private static Task LogAsync(LogMessage log)
-        {
-            Console.WriteLine(log.ToString());
-            return Task.CompletedTask;
-        }
+    private static void AddDbContext(IServiceCollection services)
+    {
+        var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseNpgsql(connectionString!)
+        );
     }
 }

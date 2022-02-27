@@ -1,9 +1,13 @@
-﻿using System.Threading.Tasks;
+﻿using Discord;
+using Discord.Commands;
+using Discord.WebSocket;
 
-namespace DiscordChannelsBot.CommandManagement.CommandHandling
+namespace DiscordChannelsBot.CommandManagement.CommandHandling;
+
+public interface ICommandHandlingService
 {
-    public interface ICommandHandlingService
-    {
-        Task InitializeAsync();
-    }
+    Task HandleCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result);
+
+    Task HandleMessageReceivedAsync(SocketMessage socketMessage, DiscordSocketClient discordClient,
+        CommandService commandService);
 }

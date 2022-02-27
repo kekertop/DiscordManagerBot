@@ -1,13 +1,12 @@
-﻿using System.Threading.Tasks;
+﻿using DiscordChannelsBot.Models;
 
-namespace DiscordChannelsBot.Configuration
+namespace DiscordChannelsBot.Configuration;
+
+public interface IDiscordBotConfigurationService
 {
-    public interface IDiscordBotConfigurationService
-    {
-        DiscordBotConfiguration GetBotConfiguration();
+    ValueTask<DiscordGuildConfiguration> GetGuildConfigurationAsync(ulong guildId);
 
-        DiscordGuildConfiguration GetGuildConfiguration(ulong guildId);
+    Task UpdateAsync(DiscordGuildConfiguration discordGuildConfiguration);
 
-        Task SaveGuildConfiguration(DiscordGuildConfiguration configuration);
-    }
+    Task SaveAsync(DiscordGuildConfiguration discordGuildConfiguration);
 }

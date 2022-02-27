@@ -1,74 +1,68 @@
-﻿using System;
-using System.Threading.Tasks;
-using Discord;
+﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using DiscordChannelsBot.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using DiscordChannelsBot.Models;
+using Microsoft.Extensions.Options;
 
-namespace DiscordChannelsBot.CommandManagement.CommandHandling
+namespace DiscordChannelsBot.CommandManagement.CommandHandling;
+
+internal class CommandHandlingService : ICommandHandlingService
 {
-    internal class CommandHandlingService : ICommandHandlingService
+    private readonly DiscordBotConfiguration _discordBotConfiguration;
+    private readonly IServiceProvider _serviceProvider;
+
+    public CommandHandlingService(IServiceProvider serviceProvider,
+        IOptions<DiscordBotConfiguration> discordBotConfiguration)
     {
-        private readonly CommandService _commandService;
-        private readonly IDiscordBotConfigurationService _discordBotConfigurationService;
-        private readonly DiscordSocketClient _discordClient;
-        private readonly IServiceProvider _serviceProvider;
+        _serviceProvider = serviceProvider;
+        _discordBotConfiguration = discordBotConfiguration.Value;
+    }
 
-        public CommandHandlingService(IServiceProvider serviceProvider)
+    public async Task HandleCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
+    {
+        if (!command.IsSpecified)
         {
-            _commandService = serviceProvider.GetRequiredService<CommandService>();
-            _discordClient = serviceProvider.GetRequiredService<DiscordSocketClient>();
-            _discordBotConfigurationService = serviceProvider.GetRequiredService<IDiscordBotConfigurationService>();
-            _serviceProvider = serviceProvider;
+            return;
         }
 
-        public async Task InitializeAsync()
+        if (result.IsSuccess)
         {
-            _discordClient.MessageReceived += MessageReceivedAsync;
-            _commandService.CommandExecuted += CommandExecutedAsync;
-            await _commandService.AddModuleAsync<ChannelsManagementModule>(_serviceProvider);
+            return;
         }
 
-        private async Task MessageReceivedAsync(SocketMessage socketMessage)
+        switch (result.Error)
         {
-            if (!(socketMessage is SocketUserMessage)) return;
-            if (socketMessage.Source != MessageSource.User) return;
-            var userMessage = (SocketUserMessage) socketMessage;
-            var prefixEndIndex = 0;
-            if (userMessage.HasStringPrefix(_discordBotConfigurationService.GetBotConfiguration().Prefix,
+            case CommandError.BadArgCount:
+                await context.Channel.SendMessageAsync(
+                    "Произошла ошибка. Слишком мало аргументов в команде.");
+                return;
+            case CommandError.UnknownCommand:
+            case CommandError.ParseFailed:
+                await context.Channel.SendMessageAsync("Произошла ошибка. Команда не распознана.");
+                return;
+            case CommandError.Exception:
+                await context.Channel.SendMessageAsync($"Произошла ошибка. {result.ErrorReason}");
+                return;
+            case CommandError.Unsuccessful:
+                await context.Channel.SendMessageAsync("Произошла ошибка. Команда не выполнена.");
+                return;
+        }
+    }
+
+    public async Task HandleMessageReceivedAsync(SocketMessage socketMessage, DiscordSocketClient discordClient,
+        CommandService commandService)
+    {
+        if (socketMessage is not SocketUserMessage {Source: MessageSource.User} userMessage)
+        {
+            return;
+        }
+
+        var prefixEndIndex = 0;
+        if (userMessage.HasStringPrefix(_discordBotConfiguration.Prefix,
                 ref prefixEndIndex))
-            {
-                SocketCommandContext commandContext = new(_discordClient, userMessage);
-                await _commandService.ExecuteAsync(commandContext, prefixEndIndex, _serviceProvider);
-            }
-        }
-
-        private async Task CommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
         {
-            if (!command.IsSpecified)
-                return;
-            if (result.IsSuccess)
-                return;
-            switch (result.Error)
-            {
-                case CommandError.BadArgCount:
-                    await context.Channel.SendMessageAsync(
-                        "Произошла ошибка: вы написали слишком мало аргументов в команде.");
-                    return;
-                case CommandError.UnknownCommand:
-                    await context.Channel.SendMessageAsync("Произошла ошибка: команда не распознана.");
-                    return;
-                case CommandError.ParseFailed:
-                    await context.Channel.SendMessageAsync("Произошла ошибка: команда не распознана.");
-                    return;
-                case CommandError.Exception:
-                    await context.Channel.SendMessageAsync($"Произошла ошибка: {result}");
-                    return;
-                case CommandError.Unsuccessful:
-                    await context.Channel.SendMessageAsync("Произошла ошибка: команда не выполнена.");
-                    return;
-            }
+            SocketCommandContext commandContext = new(discordClient, userMessage);
+            await commandService.ExecuteAsync(commandContext, prefixEndIndex, _serviceProvider);
         }
     }
 }

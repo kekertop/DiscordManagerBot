@@ -1,11 +1,9 @@
-﻿using System.Threading.Tasks;
-using Discord;
-using DiscordChannelsBot.CommandManagement.MessageFormatting;
+﻿using Discord;
+using DiscordChannelsBot.Models;
 
-namespace DiscordChannelsBot.CommandManagement.ChannelManagement
+namespace DiscordChannelsBot.CommandManagement.ChannelManagement;
+
+public interface IVoiceChannelManagementService
 {
-    public interface IVoiceChannelManagementService
-    {
-        Task CreateVoiceChannelAsync(IGuild guild, string name, GuildGroupsContext guildGroupsContext);
-    }
+    Task CreateVoiceChannelAsync(IGuild guild, string name, GuildGroupsContext guildGroupsContext);
 }

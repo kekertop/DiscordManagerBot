@@ -1,0 +1,41 @@
+version: "3.4"
+
+networks:
+  default-network:
+    driver: bridge
+
+services:
+  discord-bot:
+    container_name: discord-bot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on: [ postgres_image ]
+    ports:
+      - "8080:80"
+    environment:
+      DB_CONNECTION_STRING: host=discord-bot-postgres;port=5432;database=disdb;username=discord;password=discord
+    #      REDIS_CONNECTION_STRING: redis_image 
+    networks:
+      - default-network
+  
+  #  redis_image:
+  #    image: redis:latest
+  #    container_name: redis.cache
+
+  postgres_image:
+    container_name: discord-bot-postgres
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    restart: always
+    volumes:
+      - db_volume:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: "discord"
+      POSTGRES_PASSWORD: "discord"
+      POSTGRES_DB: "disdb"
+    networks:
+      - default-network
+volumes:
+  db_volume:

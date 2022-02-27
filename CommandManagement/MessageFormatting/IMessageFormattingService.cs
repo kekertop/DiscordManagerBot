@@ -1,9 +1,9 @@
 ﻿using Discord;
+using DiscordChannelsBot.Models;
 
-namespace DiscordChannelsBot.CommandManagement.MessageFormatting
+namespace DiscordChannelsBot.CommandManagement.MessageFormatting;
+
+public interface IMessageFormattingService
 {
-    public interface IMessageFormattingService
-    {
-        GuildGroupsContext GetGuildGroupsContextFromMessage(IGuild guild, IUser user, ref string message);
-    }
+    GuildGroupsContext GetGuildGroupsContextFromMessage(IGuild guild, IUser user, ref string message);
 }
