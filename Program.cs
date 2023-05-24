@@ -1,9 +1,8 @@
 ﻿using Discord;
-using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordChannelsBot.CommandManagement.ChannelManagement;
 using DiscordChannelsBot.CommandManagement.CommandHandling;
-using DiscordChannelsBot.CommandManagement.MessageFormatting;
 using DiscordChannelsBot.Configuration;
 using DiscordChannelsBot.Models;
 using Microsoft.EntityFrameworkCore;
@@ -59,11 +58,11 @@ internal class Program
             {
                 GatewayIntents = GatewayIntents.All
             }))
-            .AddSingleton<CommandService>()
+            // .AddSingleton<CommandService>()
+            .AddSingleton<InteractionService>()
             .AddSingleton<IDiscordBotConfigurationService, DiscordBotFileBasedConfigurationService>()
             .AddSingleton<ICommandHandlingService, CommandHandlingService>()
             .AddSingleton<IVoiceChannelManagementService, VoiceChannelManagementService>()
-            .AddSingleton<IMessageFormattingService, MessageFormattingService>()
             .AddSingleton<DiscordBot>();
     }
 

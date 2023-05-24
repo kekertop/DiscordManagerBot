@@ -1,5 +1,5 @@
 ﻿using Discord;
-using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordChannelsBot.Models;
 using Microsoft.Extensions.Options;
@@ -8,23 +8,21 @@ namespace DiscordChannelsBot.CommandManagement.CommandHandling;
 
 internal class CommandHandlingService : ICommandHandlingService
 {
-    private readonly DiscordBotConfiguration _discordBotConfiguration;
+    private readonly DiscordSocketClient _bot;
+    private readonly InteractionService _interactionService;
     private readonly IServiceProvider _serviceProvider;
 
     public CommandHandlingService(IServiceProvider serviceProvider,
-        IOptions<DiscordBotConfiguration> discordBotConfiguration)
+        IOptions<DiscordBotConfiguration> discordBotConfiguration, InteractionService interactionService,
+        DiscordSocketClient bot)
     {
         _serviceProvider = serviceProvider;
-        _discordBotConfiguration = discordBotConfiguration.Value;
+        _interactionService = interactionService;
+        _bot = bot;
     }
 
-    public async Task HandleCommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
+    public async Task HandleCommandExecutedAsync(ICommandInfo command, IInteractionContext context, IResult result)
     {
-        if (!command.IsSpecified)
-        {
-            return;
-        }
-
         if (result.IsSuccess)
         {
             return;
@@ -32,37 +30,28 @@ internal class CommandHandlingService : ICommandHandlingService
 
         switch (result.Error)
         {
-            case CommandError.BadArgCount:
-                await context.Channel.SendMessageAsync(
-                    "Произошла ошибка. Слишком мало аргументов в команде.");
+            case InteractionCommandError.BadArgs:
+                await context.Interaction.RespondAsync(
+                    "Произошла ошибка. Слишком мало аргументов в команде.", ephemeral: true);
                 return;
-            case CommandError.UnknownCommand:
-            case CommandError.ParseFailed:
-                await context.Channel.SendMessageAsync("Произошла ошибка. Команда не распознана.");
+            case InteractionCommandError.Exception:
+                await context.Interaction.RespondAsync($"Произошла ошибка. {result.ErrorReason}", ephemeral: true);
                 return;
-            case CommandError.Exception:
-                await context.Channel.SendMessageAsync($"Произошла ошибка. {result.ErrorReason}");
+            case InteractionCommandError.Unsuccessful:
+                await context.Interaction.RespondAsync("Произошла ошибка. Команда не выполнена.", ephemeral: true);
                 return;
-            case CommandError.Unsuccessful:
-                await context.Channel.SendMessageAsync("Произошла ошибка. Команда не выполнена.");
+            case InteractionCommandError.ParseFailed:
+                await context.Interaction.RespondAsync("Произошла ошибка. Команда не распознана.", ephemeral: true);
+                return;
+            default:
+                await context.Interaction.RespondAsync("Произошла ошибка.", ephemeral: true);
                 return;
         }
     }
 
-    public async Task HandleMessageReceivedAsync(SocketMessage socketMessage, DiscordSocketClient discordClient,
-        CommandService commandService)
+    public async Task HandleMessageReceivedAsync(SocketInteraction interaction)
     {
-        if (socketMessage is not SocketUserMessage {Source: MessageSource.User} userMessage)
-        {
-            return;
-        }
-
-        var prefixEndIndex = 0;
-        if (userMessage.HasStringPrefix(_discordBotConfiguration.Prefix,
-                ref prefixEndIndex))
-        {
-            SocketCommandContext commandContext = new(discordClient, userMessage);
-            await commandService.ExecuteAsync(commandContext, prefixEndIndex, _serviceProvider);
-        }
+        await _interactionService.ExecuteCommandAsync(new SocketInteractionContext(_bot, interaction),
+            _serviceProvider);
     }
 }
