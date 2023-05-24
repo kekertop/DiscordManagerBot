@@ -1,5 +1,5 @@
 ﻿using Discord;
-using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordChannelsBot.CommandManagement.CommandHandling;
 using DiscordChannelsBot.Models;
@@ -8,33 +8,40 @@ using Microsoft.Extensions.Options;
 
 namespace DiscordChannelsBot;
 
-public class DiscordBot
+public class DiscordBot : IAsyncExecutor
 {
     private readonly DiscordSocketClient _bot;
     private readonly DiscordBotConfiguration _configuration;
+    private readonly InteractionService _interactionService;
     private readonly ILogger<DiscordBot> _logger;
 
-    public DiscordBot(IServiceProvider serviceProvider, IOptions<DiscordBotConfiguration> configuration,
-        CommandService commandService, DiscordSocketClient bot, ILogger<DiscordBot> logger,
-        ICommandHandlingService commandHandlingService)
+    public DiscordBot(IServiceProvider serviceProvider,
+        IOptions<DiscordBotConfiguration> configuration,
+        DiscordSocketClient bot,
+        ILogger<DiscordBot> logger,
+        ICommandHandlingService commandHandlingService,
+        InteractionService interactionService)
     {
         _configuration = configuration.Value;
         _bot = bot;
         _logger = logger;
+        _interactionService = interactionService;
 
         _bot.Log += Log;
-        _bot.MessageReceived += message =>
-            commandHandlingService.HandleMessageReceivedAsync(message, _bot, commandService);
 
-        commandService.CommandExecuted += commandHandlingService.HandleCommandExecutedAsync;
-        commandService.AddModuleAsync<ChannelsManagementModule>(serviceProvider).ConfigureAwait(false).GetAwaiter()
+        _bot.InteractionCreated += commandHandlingService.HandleMessageReceivedAsync;
+
+        _interactionService.AddModuleAsync<ChannelsManagementModule>(serviceProvider).ConfigureAwait(false).GetAwaiter()
             .GetResult();
+        _interactionService.InteractionExecuted += commandHandlingService.HandleCommandExecutedAsync;
     }
 
     public async Task StartAsync()
     {
         await _bot.LoginAsync(TokenType.Bot, _configuration.Token);
         await _bot.StartAsync();
+
+        _bot.Ready += async () => await _interactionService.RegisterCommandsGloballyAsync();
     }
 
     private Task Log(LogMessage log)
