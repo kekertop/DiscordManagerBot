@@ -36,7 +36,7 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
         var categoryChannel =
             await DiscordBotUtils.GetCategoryAsync(guild, guildConfiguration.VoiceChannelCreationCategory);
 
-        Action<VoiceChannelProperties> voiceChannelProperties = channel => { };
+        Action<VoiceChannelProperties> voiceChannelProperties = _ => { };
         if (categoryChannel != null)
         {
             voiceChannelProperties += channel => channel.CategoryId = categoryChannel.Id;
@@ -94,7 +94,7 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
         if (originalState.VoiceChannel != null)
         {
             var voiceChannel = originalState.VoiceChannel;
-            if (voiceChannel.Users.Count == 0)
+            if (voiceChannel.ConnectedUsers.Count == 0)
             {
                 RunDeletionCheckAsync(voiceChannel.Id);
             }
@@ -120,8 +120,8 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
         {
             await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
 
-            var voiceChannel = (SocketVoiceChannel)_discordClient.GetChannel(voiceChannelId);
-            if (voiceChannel != null && voiceChannel.Users.Count == 0)
+            var voiceChannel = (SocketVoiceChannel) _discordClient.GetChannel(voiceChannelId);
+            if (voiceChannel != null && voiceChannel.ConnectedUsers.Count == 0)
             {
                 await voiceChannel.DeleteAsync();
             }
