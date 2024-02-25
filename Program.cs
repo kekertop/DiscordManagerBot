@@ -3,7 +3,9 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordChannelsBot.CommandManagement.ChannelManagement;
 using DiscordChannelsBot.CommandManagement.CommandHandling;
+using DiscordChannelsBot.CommandManagement.Listeners;
 using DiscordChannelsBot.Configuration;
+using DiscordChannelsBot.Executors;
 using DiscordChannelsBot.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,26 +53,23 @@ internal class Program
 
     private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
     {
-        AddDbContext(services);
-
-        services.Configure<DiscordBotConfiguration>(context.Configuration.GetSection("DiscordBot"))
+        var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+        services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(connectionString!)
+            )
+            .Configure<DiscordBotConfiguration>(context.Configuration.GetSection("DiscordBot"))
             .AddSingleton(_ => new DiscordSocketClient(new DiscordSocketConfig
             {
                 GatewayIntents = GatewayIntents.All
             }))
-            // .AddSingleton<CommandService>()
-            .AddSingleton<InteractionService>()
             .AddSingleton<IDiscordBotConfigurationService, DiscordBotFileBasedConfigurationService>()
+            .AddSingleton<IVoiceChannelUpdatedListener, VoiceChannelDeletionCheckListener>()
+            .AddSingleton<IVoiceChannelUpdatedListener, CreatorVoiceChannelUpdatedListener>()
+            // .AddSingleton<CommandService>()
+            .AddSingleton<EmptyVoiceChannelDeletionHandler>()
+            .AddSingleton<InteractionService>()
             .AddSingleton<ICommandHandlingService, CommandHandlingService>()
             .AddSingleton<IVoiceChannelManagementService, VoiceChannelManagementService>()
             .AddSingleton<DiscordBot>();
-    }
-
-    private static void AddDbContext(IServiceCollection services)
-    {
-        var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString!)
-        );
     }
 }

@@ -5,5 +5,11 @@ namespace DiscordChannelsBot.CommandManagement.ChannelManagement;
 
 public interface IVoiceChannelManagementService
 {
-    Task CreateVoiceChannelAsync(IGuild guild, string name, GuildGroupsContext guildGroupsContext);
+    Task<IVoiceChannel> CreateVoiceChannelAsync(IGuild guild, string name, GuildGroupsContext guildGroupsContext)
+    {
+        return CreateVoiceChannelAsync(guild, name, guildGroupsContext, true);
+    }
+
+    Task<IVoiceChannel> CreateVoiceChannelAsync(IGuild guild, string name, GuildGroupsContext guildGroupsContext,
+        bool runDeletionCheck);
 }

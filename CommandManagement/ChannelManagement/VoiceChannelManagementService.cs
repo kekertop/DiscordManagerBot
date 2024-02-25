@@ -1,31 +1,24 @@
 ﻿using Discord;
-using Discord.WebSocket;
 using DiscordChannelsBot.Common;
 using DiscordChannelsBot.Configuration;
 using DiscordChannelsBot.Models;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace DiscordChannelsBot.CommandManagement.ChannelManagement;
 
 public class VoiceChannelManagementService : IVoiceChannelManagementService
 {
+    private readonly EmptyVoiceChannelDeletionHandler _deletionHandler;
     private readonly IDiscordBotConfigurationService _discordBotConfigurationService;
-    private readonly DiscordSocketClient _discordClient;
 
-    private readonly Dictionary<ulong, CancellationTokenSource>
-        _voiceChannelDeletionCheckCancellationTokenSourcesDictionary;
-
-    public VoiceChannelManagementService(IServiceProvider serviceProvider)
+    public VoiceChannelManagementService(IDiscordBotConfigurationService discordBotConfigurationService,
+        EmptyVoiceChannelDeletionHandler deletionHandler)
     {
-        _voiceChannelDeletionCheckCancellationTokenSourcesDictionary =
-            new Dictionary<ulong, CancellationTokenSource>();
-        _discordBotConfigurationService = serviceProvider.GetRequiredService<IDiscordBotConfigurationService>();
-        _discordClient = serviceProvider.GetRequiredService<DiscordSocketClient>();
-
-        _discordClient.UserVoiceStateUpdated += UserVoiceStateUpdatedHandleAsync;
+        _discordBotConfigurationService = discordBotConfigurationService;
+        _deletionHandler = deletionHandler;
     }
 
-    public async Task CreateVoiceChannelAsync(IGuild guild, string name, GuildGroupsContext guildGroupsContext)
+    public async Task<IVoiceChannel> CreateVoiceChannelAsync(IGuild guild, string name,
+        GuildGroupsContext guildGroupsContext, bool runDeletionCheck)
     {
         var guildConfiguration = await _discordBotConfigurationService.GetGuildConfigurationAsync(guild.Id);
         if (guildConfiguration == null)
@@ -53,7 +46,12 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
             }
         }
 
-        RunDeletionCheckAsync(voiceChannel.Id);
+        if (runDeletionCheck)
+        {
+            _deletionHandler.RunDeletionCheckAsync(voiceChannel.Id);
+        }
+
+        return voiceChannel;
     }
 
     private async Task AllowOnlyRolesAsync(IGuild guild, IVoiceChannel voiceChannel,
@@ -85,58 +83,6 @@ public class VoiceChannelManagementService : IVoiceChannelManagementService
             {
                 await voiceChannel.AddPermissionOverwriteAsync(user, rolePermissions);
             }
-        }
-    }
-
-    private Task UserVoiceStateUpdatedHandleAsync(SocketUser user, SocketVoiceState originalState,
-        SocketVoiceState updatedState)
-    {
-        if (originalState.VoiceChannel != null)
-        {
-            var voiceChannel = originalState.VoiceChannel;
-            if (voiceChannel.ConnectedUsers.Count == 0)
-            {
-                RunDeletionCheckAsync(voiceChannel.Id);
-            }
-        }
-
-        if (updatedState.VoiceChannel != null)
-        {
-            var voiceChannel = updatedState.VoiceChannel;
-            CancelDeletionCheckIfExists(voiceChannel.Id);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private async void RunDeletionCheckAsync(ulong voiceChannelId)
-    {
-        var cancellationTokenSource = new CancellationTokenSource();
-        var cancellationToken = cancellationTokenSource.Token;
-
-        _voiceChannelDeletionCheckCancellationTokenSourcesDictionary.Add(voiceChannelId, cancellationTokenSource);
-
-        try
-        {
-            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
-
-            var voiceChannel = (SocketVoiceChannel) _discordClient.GetChannel(voiceChannelId);
-            if (voiceChannel != null && voiceChannel.ConnectedUsers.Count == 0)
-            {
-                await voiceChannel.DeleteAsync();
-            }
-        }
-        catch (TaskCanceledException)
-        {
-        }
-    }
-
-    private void CancelDeletionCheckIfExists(ulong voiceChannelId)
-    {
-        if (_voiceChannelDeletionCheckCancellationTokenSourcesDictionary.ContainsKey(voiceChannelId))
-        {
-            _voiceChannelDeletionCheckCancellationTokenSourcesDictionary[voiceChannelId].Cancel();
-            _voiceChannelDeletionCheckCancellationTokenSourcesDictionary.Remove(voiceChannelId);
         }
     }
 }

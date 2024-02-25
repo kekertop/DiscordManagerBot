@@ -15,14 +15,9 @@ services:
       - "8080:80"
     environment:
       DB_CONNECTION_STRING: host=discord-bot-postgres;port=5432;database=disdb;username=discord;password=discord
-    #      REDIS_CONNECTION_STRING: redis_image 
     networks:
       - default-network
   
-  #  redis_image:
-  #    image: redis:latest
-  #    container_name: redis.cache
-
   postgres_image:
     container_name: discord-bot-postgres
     image: postgres:latest

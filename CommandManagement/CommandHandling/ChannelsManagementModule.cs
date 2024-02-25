@@ -11,6 +11,7 @@ public class ChannelsManagementModule : InteractionModuleBase<SocketInteractionC
     public IDiscordBotConfigurationService DiscordBotConfigurationService { get; init; }
     public IVoiceChannelManagementService VoiceChannelManagementService { get; init; }
 
+    [RequireUserPermission(ChannelPermission.ManageChannels)]
     [SlashCommand("voice", "Create a voice channel")]
     [RequireContext(ContextType.Guild)]
     public async Task CreateVoiceChannel([Summary("Channel")] string channel,
@@ -73,5 +74,63 @@ public class ChannelsManagementModule : InteractionModuleBase<SocketInteractionC
 
         await Context.Interaction.RespondAsync(
             $"Теперь голосовые каналы будут создаваться в категории **{category}**.", ephemeral: true);
+    }
+
+    [RequireUserPermission(ChannelPermission.ManageChannels)]
+    [SlashCommand("voice-creator-channel", "Set a channel that creates another voice channel when user enters in")]
+    [RequireContext(ContextType.Guild)]
+    public async Task SetVoiceCreatorChannel([Summary("Channel")] string channel)
+    {
+        var guildConfiguration = await DiscordBotConfigurationService.GetGuildConfigurationAsync(Context.Guild.Id);
+        var creatorVoiceChannel =
+            await VoiceChannelManagementService.CreateVoiceChannelAsync(Context.Guild, channel, null, false);
+
+        if (guildConfiguration == null)
+        {
+            guildConfiguration = new DiscordGuildConfiguration
+            {
+                Id = Context.Guild.Id,
+                CreatorVoiceChannelId = creatorVoiceChannel.Id
+            };
+
+            await DiscordBotConfigurationService.SaveAsync(guildConfiguration);
+        }
+        else
+        {
+            guildConfiguration.CreatorVoiceChannelId = creatorVoiceChannel.Id;
+
+            await DiscordBotConfigurationService.UpdateAsync(guildConfiguration);
+        }
+
+        await Context.Interaction.RespondAsync(
+            $"Теперь канал **{channel}** будет создавать новые каналы.", ephemeral: true);
+    }
+
+    [RequireUserPermission(ChannelPermission.ManageChannels)]
+    [SlashCommand("auto-voice-channel-name", "Set a name for automatically created voice channels")]
+    [RequireContext(ContextType.Guild)]
+    public async Task SetAutoVoiceChannelName([Summary("Channel")] string channel)
+    {
+        var guildConfiguration = await DiscordBotConfigurationService.GetGuildConfigurationAsync(Context.Guild.Id);
+
+        if (guildConfiguration == null)
+        {
+            guildConfiguration = new DiscordGuildConfiguration
+            {
+                Id = Context.Guild.Id,
+                AutoVoiceChannelName = channel
+            };
+
+            await DiscordBotConfigurationService.SaveAsync(guildConfiguration);
+        }
+        else
+        {
+            guildConfiguration.AutoVoiceChannelName = channel;
+
+            await DiscordBotConfigurationService.UpdateAsync(guildConfiguration);
+        }
+
+        await Context.Interaction.RespondAsync(
+            $"Теперь автоматические каналы будут называться **{channel}**.", ephemeral: true);
     }
 }

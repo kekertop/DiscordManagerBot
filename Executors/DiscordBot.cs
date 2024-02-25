@@ -2,46 +2,71 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordChannelsBot.CommandManagement.CommandHandling;
+using DiscordChannelsBot.CommandManagement.Listeners;
 using DiscordChannelsBot.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace DiscordChannelsBot;
+namespace DiscordChannelsBot.Executors;
 
-public class DiscordBot : IAsyncExecutor
+public class DiscordBot
 {
     private readonly DiscordSocketClient _bot;
+    private readonly ICommandHandlingService _commandHandlingService;
     private readonly DiscordBotConfiguration _configuration;
     private readonly InteractionService _interactionService;
     private readonly ILogger<DiscordBot> _logger;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IEnumerable<IVoiceChannelUpdatedListener> _voiceChannelUpdatedListeners;
 
     public DiscordBot(IServiceProvider serviceProvider,
         IOptions<DiscordBotConfiguration> configuration,
         DiscordSocketClient bot,
         ILogger<DiscordBot> logger,
         ICommandHandlingService commandHandlingService,
-        InteractionService interactionService)
+        InteractionService interactionService,
+        IEnumerable<IVoiceChannelUpdatedListener> voiceChannelUpdatedListeners)
     {
         _configuration = configuration.Value;
         _bot = bot;
         _logger = logger;
         _interactionService = interactionService;
-
-        _bot.Log += Log;
-
-        _bot.InteractionCreated += commandHandlingService.HandleMessageReceivedAsync;
-
-        _interactionService.AddModuleAsync<ChannelsManagementModule>(serviceProvider).ConfigureAwait(false).GetAwaiter()
-            .GetResult();
-        _interactionService.InteractionExecuted += commandHandlingService.HandleCommandExecutedAsync;
+        _serviceProvider = serviceProvider;
+        _commandHandlingService = commandHandlingService;
+        _voiceChannelUpdatedListeners = voiceChannelUpdatedListeners;
     }
 
     public async Task StartAsync()
     {
+        RegisterLogs();
+        RegisterListeners();
+        await RegisterInteractionsAsync();
         await _bot.LoginAsync(TokenType.Bot, _configuration.Token);
         await _bot.StartAsync();
 
-        _bot.Ready += async () => await _interactionService.RegisterCommandsGloballyAsync();
+        _bot.Ready += () => _interactionService.RegisterCommandsGloballyAsync();
+    }
+
+    private async Task RegisterInteractionsAsync()
+    {
+        _bot.InteractionCreated += _commandHandlingService.HandleMessageReceivedAsync;
+
+        _interactionService.InteractionExecuted += _commandHandlingService.HandleCommandExecutedAsync;
+
+        await _interactionService.AddModuleAsync<ChannelsManagementModule>(_serviceProvider);
+    }
+
+    private void RegisterListeners()
+    {
+        foreach (var listener in _voiceChannelUpdatedListeners)
+        {
+            _bot.UserVoiceStateUpdated += listener.UserVoiceStateUpdatedHandleAsync;
+        }
+    }
+
+    private void RegisterLogs()
+    {
+        _bot.Log += Log;
     }
 
     private Task Log(LogMessage log)
